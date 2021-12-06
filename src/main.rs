@@ -21,20 +21,20 @@ mod day01 {
     // What is the sum of the fuel requirements for all of the modules on your
     // spacecraft?
 
-    struct Module {
-        mass: u32,
-    }
-
-    impl Module {
-        fn new(mass: u32) -> Self { Self { mass } }
-        fn fuel(&self) -> u32 { self.mass / 3 - 2 }
-    }
-
     pub fn part1() -> u32 {
-        assert_eq!(2, Module::new(12).fuel());
-        assert_eq!(2, Module::new(14).fuel());
-        assert_eq!(654, Module::new(1969).fuel());
-        assert_eq!(33583, Module::new(100756).fuel());
+        struct Module {
+            mass: u32,
+        }
+
+        impl Module {
+            fn new(mass: u32) -> Self { Self { mass } }
+            fn fuel_required(&self) -> u32 { self.mass / 3 - 2 }
+        }
+
+        assert_eq!(2, Module::new(12).fuel_required());
+        assert_eq!(2, Module::new(14).fuel_required());
+        assert_eq!(654, Module::new(1969).fuel_required());
+        assert_eq!(33583, Module::new(100756).fuel_required());
 
         use std::fs::File;
         use std::io::{BufRead, BufReader};
@@ -47,7 +47,87 @@ mod day01 {
         for line in buffer.lines() {
             let mass = line.unwrap().parse::<u32>().unwrap();
             let module = Module::new(mass);
-            total_fuel += module.fuel();
+            total_fuel += module.fuel_required();
+        }
+
+        total_fuel
+    }
+
+    // During the second Go / No Go poll, the Elf in charge of the Rocket
+    // Equation Double-Checker stops the launch sequence. Apparently, you forgot
+    // to include additional fuel for the fuel you just added.
+    //
+    // Fuel itself requires fuel just like a module - take its mass, divide by
+    // three, round down, and subtract 2. However, that fuel also requires fuel,
+    // and that fuel requires fuel, and so on. Any mass that would require
+    // negative fuel should instead be treated as if it requires zero fuel; the
+    // remaining mass, if any, is instead handled by wishing really hard, which
+    // has no mass and is outside the scope of this calculation.
+    //
+    // So, for each module mass, calculate its fuel and add it to the total.
+    // Then, treat the fuel amount you just calculated as the input mass and
+    // repeat the process, continuing until a fuel requirement is zero or
+    // negative. For example:
+    //
+    // A module of mass 14 requires 2 fuel. This fuel requires no further fuel
+    // (2 divided by 3 and rounded down is 0, which would call for a negative
+    // fuel), so the total fuel required is still just 2. At first, a module of
+    // mass 1969 requires 654 fuel. Then, this fuel requires 216 more fuel (654
+    // / 3 - 2). 216 then requires 70 more fuel, which requires 21 fuel, which
+    // requires 5 fuel, which requires no further fuel. So, the total fuel
+    // required for a module of mass 1969 is 654 + 216 + 70 + 21 + 5 = 966. The
+    // fuel required by a module of mass 100756 and its fuel is: 33583 + 11192 +
+    // 3728 + 1240 + 411 + 135 + 43 + 12 + 2 = 50346. What is the sum of the
+    // fuel requirements for all of the modules on your spacecraft when also
+    // taking into account the mass of the added fuel? (Calculate the fuel
+    // requirements for each module separately, then add them all up at the
+    // end.)
+
+    pub fn part2() -> i32 {
+        struct Module {
+            mass: i32,
+        }
+
+        impl Module {
+            fn new(mass: i32) -> Self { Self { mass } }
+
+            fn fuel_required_for_mass(mass: i32) -> i32 {
+                std::cmp::max(mass / 3 - 2, 0)
+            }
+
+            fn fuel_required(&self) -> i32 {
+                let mut total_fuel = 0;
+                let mut unaccounted_mass = self.mass;
+
+                while unaccounted_mass > 0 {
+                    let additional_fuel =
+                        Self::fuel_required_for_mass(unaccounted_mass);
+
+                    total_fuel += additional_fuel;
+                    unaccounted_mass = additional_fuel;
+                }
+
+                total_fuel
+            }
+        }
+
+        assert_eq!(2, Module::new(12).fuel_required());
+        assert_eq!(2, Module::new(14).fuel_required());
+        assert_eq!(966, Module::new(1969).fuel_required());
+        assert_eq!(50346, Module::new(100756).fuel_required());
+
+        use std::fs::File;
+        use std::io::{BufRead, BufReader};
+
+        let handle = File::open("input/day01/part1.txt").unwrap();
+        let buffer = BufReader::new(handle);
+
+        let mut total_fuel = 0;
+
+        for line in buffer.lines() {
+            let mass = line.unwrap().parse::<i32>().unwrap();
+            let module = Module::new(mass);
+            total_fuel += module.fuel_required();
         }
 
         total_fuel
@@ -56,6 +136,10 @@ mod day01 {
 
 fn main() {
     let result = day01::part1();
-    println!("{:?}", result);
+    println!("Day 1 Part 1: {:?}", result);
     assert_eq!(3427972, result);
+
+    let result = day01::part2();
+    println!("      Part 2: {:?}", result);
+    assert_eq!(5139078, result);
 }
