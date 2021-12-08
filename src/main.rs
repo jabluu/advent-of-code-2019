@@ -1,34 +1,13 @@
+// https://adventofcode.com/2019/day/1
 mod day01 {
-    // The Elves quickly load you into a spacecraft and prepare to launch.
-    //
-    // At the first Go / No Go poll, every Elf is Go until the Fuel
-    // Counter-Upper. They haven't determined the amount of fuel required yet.
-    //
-    // Fuel required to launch a given module is based on its mass.
-    // Specifically, to find the fuel required for a module, take its mass,
-    // divide by three, round down, and subtract 2.
-    //
-    // For example:
-    //
-    // For a mass of 12, divide by 3 and round down to get 4, then subtract 2 to
-    // get 2. For a mass of 14, dividing by 3 and rounding down still yields 4,
-    // so the fuel required is also 2. For a mass of 1969, the fuel required is
-    // 654. For a mass of 100756, the fuel required is 33583. The Fuel
-    // Counter-Upper needs to know the total fuel requirement. To find it,
-    // individually calculate the fuel needed for the mass of each module (your
-    // puzzle input), then add together all the fuel values.
-    //
-    // What is the sum of the fuel requirements for all of the modules on your
-    // spacecraft?
-
-    pub fn part1() -> u32 {
+    pub fn part1() -> i32 {
         struct Module {
-            mass: u32,
+            mass: i32,
         }
 
         impl Module {
-            fn new(mass: u32) -> Self { Self { mass } }
-            fn fuel_required(&self) -> u32 { self.mass / 3 - 2 }
+            fn new(mass: i32) -> Self { Self { mass } }
+            fn fuel_required(&self) -> i32 { self.mass / 3 - 2 }
         }
 
         assert_eq!(2, Module::new(12).fuel_required());
@@ -39,49 +18,19 @@ mod day01 {
         use std::fs::File;
         use std::io::{BufRead, BufReader};
 
-        let handle = File::open("input/day01/part1.txt").unwrap();
+        let handle = File::open("input/day01/input.txt").unwrap();
         let buffer = BufReader::new(handle);
 
         let mut total_fuel = 0;
 
         for line in buffer.lines() {
-            let mass = line.unwrap().parse::<u32>().unwrap();
+            let mass = line.unwrap().parse::<i32>().unwrap();
             let module = Module::new(mass);
             total_fuel += module.fuel_required();
         }
 
         total_fuel
     }
-
-    // During the second Go / No Go poll, the Elf in charge of the Rocket
-    // Equation Double-Checker stops the launch sequence. Apparently, you forgot
-    // to include additional fuel for the fuel you just added.
-    //
-    // Fuel itself requires fuel just like a module - take its mass, divide by
-    // three, round down, and subtract 2. However, that fuel also requires fuel,
-    // and that fuel requires fuel, and so on. Any mass that would require
-    // negative fuel should instead be treated as if it requires zero fuel; the
-    // remaining mass, if any, is instead handled by wishing really hard, which
-    // has no mass and is outside the scope of this calculation.
-    //
-    // So, for each module mass, calculate its fuel and add it to the total.
-    // Then, treat the fuel amount you just calculated as the input mass and
-    // repeat the process, continuing until a fuel requirement is zero or
-    // negative. For example:
-    //
-    // A module of mass 14 requires 2 fuel. This fuel requires no further fuel
-    // (2 divided by 3 and rounded down is 0, which would call for a negative
-    // fuel), so the total fuel required is still just 2. At first, a module of
-    // mass 1969 requires 654 fuel. Then, this fuel requires 216 more fuel (654
-    // / 3 - 2). 216 then requires 70 more fuel, which requires 21 fuel, which
-    // requires 5 fuel, which requires no further fuel. So, the total fuel
-    // required for a module of mass 1969 is 654 + 216 + 70 + 21 + 5 = 966. The
-    // fuel required by a module of mass 100756 and its fuel is: 33583 + 11192 +
-    // 3728 + 1240 + 411 + 135 + 43 + 12 + 2 = 50346. What is the sum of the
-    // fuel requirements for all of the modules on your spacecraft when also
-    // taking into account the mass of the added fuel? (Calculate the fuel
-    // requirements for each module separately, then add them all up at the
-    // end.)
 
     pub fn part2() -> i32 {
         struct Module {
@@ -119,7 +68,7 @@ mod day01 {
         use std::fs::File;
         use std::io::{BufRead, BufReader};
 
-        let handle = File::open("input/day01/part1.txt").unwrap();
+        let handle = File::open("input/day01/input.txt").unwrap();
         let buffer = BufReader::new(handle);
 
         let mut total_fuel = 0;
@@ -134,6 +83,265 @@ mod day01 {
     }
 }
 
+// https://adventofcode.com/2019/day/2
+mod day02 {
+    pub fn part1() -> i32 {
+        #[derive(Clone)]
+        enum State {
+            EXEC,
+            HALT,
+        }
+
+        #[derive(Clone)]
+        struct Computer {
+            program: Vec<i32>,
+            counter: usize,
+            state: State,
+        }
+
+        impl Computer {
+            fn new(program: &[i32]) -> Self {
+                Self {
+                    program: program.to_vec(),
+                    counter: 0,
+                    state: State::EXEC,
+                }
+            }
+
+            fn run(&mut self) -> &Self {
+                loop {
+                    match self.state {
+                        State::EXEC => {
+                            self.run_cycle();
+                        },
+                        State::HALT => {
+                            break;
+                        }
+                    }
+                }
+
+                self
+            }
+
+            fn run_cycle(&mut self) {
+                let opcode = self.program[self.counter];
+
+                match opcode {
+                    1 => {
+                        let src = (
+                            self.program[self.counter+1] as usize,
+                            self.program[self.counter+2] as usize,
+                        );
+
+                        let dst = self.program[self.counter+3] as usize;
+
+                        let arg = (
+                            self.program[src.0],
+                            self.program[src.1],
+                        );
+
+                        self.program[dst] = arg.0 + arg.1;
+                        self.counter += 4;
+                    },
+                    2 => {
+                        let src = (
+                            self.program[self.counter+1] as usize,
+                            self.program[self.counter+2] as usize,
+                        );
+
+                        let dst = self.program[self.counter+3] as usize;
+
+                        let arg = (
+                            self.program[src.0],
+                            self.program[src.1],
+                        );
+
+                        self.program[dst] = arg.0 * arg.1;
+                        self.counter += 4;
+                    },
+                    99 => {
+                        self.state = State::HALT;
+                        self.counter += 1;
+                    },
+                    _ => panic!("unrecognized opcode: {}", opcode),
+                }
+            }
+        }
+
+        assert_eq!(
+            [2,0,0,0,99].to_vec(),
+            Computer::new(&[1,0,0,0,99]).run().program
+        );
+
+        assert_eq!(
+            [2,3,0,6,99].to_vec(),
+            Computer::new(&[2,3,0,3,99]).run().program
+        );
+
+        assert_eq!(
+            [2,4,4,5,99,9801].to_vec(),
+            Computer::new(&[2,4,4,5,99,0]).run().program
+        );
+
+        assert_eq!(
+            [30,1,1,4,2,5,6,0,99].to_vec(),
+            Computer::new(&[1,1,1,4,99,5,6,0,99]).run().program
+        );
+
+        use std::fs::File;
+        use std::io::{BufRead, BufReader};
+
+        let handle = File::open("input/day02/input.txt").unwrap();
+        let buffer = BufReader::new(handle);
+
+        let computers = buffer.lines()
+            .map(|line| {
+                line.unwrap().split(',').map(|item| {
+                    item.parse::<i32>().unwrap()
+                }).collect::<Vec<i32>>()
+            })
+            .map(|program| {
+                Computer::new(&program)
+            })
+            .collect::<Vec<Computer>>();
+
+        let mut computer = computers[0].clone();
+
+        computer.program[1] = 12;
+        computer.program[2] = 2;
+
+        computer.run().program[0]
+    }
+
+       pub fn part1() -> i32 {
+        #[derive(Clone)]
+        enum State {
+            EXEC,
+            HALT,
+        }
+
+        #[derive(Clone)]
+        struct Computer {
+            program: Vec<i32>,
+            counter: usize,
+            state: State,
+        }
+
+        impl Computer {
+            fn new(program: &[i32]) -> Self {
+                Self {
+                    program: program.to_vec(),
+                    counter: 0,
+                    state: State::EXEC,
+                }
+            }
+
+            fn run(&mut self) -> &Self {
+                loop {
+                    match self.state {
+                        State::EXEC => {
+                            self.run_cycle();
+                        },
+                        State::HALT => {
+                            break;
+                        }
+                    }
+                }
+
+                self
+            }
+
+            fn run_cycle(&mut self) {
+                let opcode = self.program[self.counter];
+
+                match opcode {
+                    1 => {
+                        let src = (
+                            self.program[self.counter+1] as usize,
+                            self.program[self.counter+2] as usize,
+                        );
+
+                        let dst = self.program[self.counter+3] as usize;
+
+                        let arg = (
+                            self.program[src.0],
+                            self.program[src.1],
+                        );
+
+                        self.program[dst] = arg.0 + arg.1;
+                        self.counter += 4;
+                    },
+                    2 => {
+                        let src = (
+                            self.program[self.counter+1] as usize,
+                            self.program[self.counter+2] as usize,
+                        );
+
+                        let dst = self.program[self.counter+3] as usize;
+
+                        let arg = (
+                            self.program[src.0],
+                            self.program[src.1],
+                        );
+
+                        self.program[dst] = arg.0 * arg.1;
+                        self.counter += 4;
+                    },
+                    99 => {
+                        self.state = State::HALT;
+                        self.counter += 1;
+                    },
+                    _ => panic!("unrecognized opcode: {}", opcode),
+                }
+            }
+        }
+
+        assert_eq!(
+            [2,0,0,0,99].to_vec(),
+            Computer::new(&[1,0,0,0,99]).run().program
+        );
+
+        assert_eq!(
+            [2,3,0,6,99].to_vec(),
+            Computer::new(&[2,3,0,3,99]).run().program
+        );
+
+        assert_eq!(
+            [2,4,4,5,99,9801].to_vec(),
+            Computer::new(&[2,4,4,5,99,0]).run().program
+        );
+
+        assert_eq!(
+            [30,1,1,4,2,5,6,0,99].to_vec(),
+            Computer::new(&[1,1,1,4,99,5,6,0,99]).run().program
+        );
+
+        use std::fs::File;
+        use std::io::{BufRead, BufReader};
+
+        let handle = File::open("input/day02/input.txt").unwrap();
+        let buffer = BufReader::new(handle);
+
+        let computers = buffer.lines()
+            .map(|line| {
+                line.unwrap().split(',').map(|item| {
+                    item.parse::<i32>().unwrap()
+                }).collect::<Vec<i32>>()
+            })
+            .map(|program| {
+                Computer::new(&program)
+            })
+            .collect::<Vec<Computer>>();
+
+        let mut computer = computers[0].clone();
+
+        computer.program[1] = 12;
+        computer.program[2] = 2;
+
+        computer.run().program[0]
+    }
+}
+
 fn main() {
     let result = day01::part1();
     println!("Day 1 Part 1: {:?}", result);
@@ -142,4 +350,12 @@ fn main() {
     let result = day01::part2();
     println!("      Part 2: {:?}", result);
     assert_eq!(5139078, result);
+
+    let result = day02::part1();
+    println!("Day 2 Part 1: {:?}", result);
+    assert_eq!(7594646, result);
+
+    let result = day02::part2();
+    println!("      Part 2: {:?}", result);
+    assert_eq!(3376, result);
 }
