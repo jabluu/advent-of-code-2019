@@ -1,3 +1,4 @@
+// https://adventofcode.com/2019/day/3
 
 pub fn part1() -> i32 {
     #[derive(Clone, Copy, PartialEq, Eq, Debug)]
