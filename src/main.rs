@@ -1,6 +1,7 @@
 mod day01;
 mod day02;
 mod day03;
+mod day04;
 
 fn main() {
     let result = day01::part1();
@@ -26,4 +27,12 @@ fn main() {
     let result = day03::part2();
     println!("      Part 2: {:?}", result);
     assert_eq!(20386, result);
+
+    let result = day04::part1();
+    println!("Day 4 Part 1: {:?}", result);
+    assert_eq!(945, result);
+
+    let result = day04::part2();
+    println!("      Part 2: {:?}", result);
+    // assert_eq!(20386, result);
 }
