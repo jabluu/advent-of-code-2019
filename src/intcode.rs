@@ -4,6 +4,33 @@ enum Signal {
     HALT,
 }
 
+enum OpCode {
+    ADD,
+    MUL,
+    HALT,
+}
+
+impl From<i32> for OpCode {
+    fn from(id: i32) -> Self {
+        match id {
+            1 => Self::ADD,
+            2 => Self::MUL,
+            99 => Self::HALT,
+            _ => panic!("unrecognized opcode id: {}", id),
+        }
+    }
+}
+
+impl OpCode {
+    fn size(&self) -> usize {
+        match self {
+            Self::ADD => 4,
+            Self::MUL => 4,
+            Self::HALT => 1,
+        }
+    }
+}
+
 #[derive(Clone)]
 pub struct Computer {
     pub memory: Vec<i32>,
@@ -42,10 +69,10 @@ impl Computer {
     fn execute_instruction(&mut self) -> Option<Signal> {
         let instr_ptr = self.instruction_pointer;
 
-        let opcode = self.memory[instr_ptr];
+        let opcode = self.memory[instr_ptr].into();
 
         let result = match opcode {
-            1 => {
+            OpCode::ADD => {
                 let param_addr = (
                     self.memory[instr_ptr+1] as usize,
                     self.memory[instr_ptr+2] as usize,
@@ -61,10 +88,9 @@ impl Computer {
                 let result = param.0 + param.1;
                 self.memory[result_addr] = result;
 
-                self.instruction_pointer += 4;
                 None
             },
-            2 => {
+            OpCode::MUL => {
                 let param_addr = (
                     self.memory[instr_ptr+1] as usize,
                     self.memory[instr_ptr+2] as usize,
@@ -80,15 +106,14 @@ impl Computer {
                 let result = param.0 * param.1;
                 self.memory[result_addr] = result;
 
-                self.instruction_pointer += 4;
                 None
             },
-            99 => {
-                self.instruction_pointer += 1;
+            OpCode::HALT => {
                 Some(Signal::HALT)
             },
-            _ => panic!("unrecognized opcode: {}", opcode),
         };
+
+        self.instruction_pointer += opcode.size();
 
         result
     }
