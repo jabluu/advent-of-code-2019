@@ -1,7 +1,6 @@
 
 #[derive(Clone)]
-enum State {
-    EXEC,
+enum Signal {
     HALT,
 }
 
@@ -9,7 +8,6 @@ enum State {
 pub struct Computer {
     pub memory: Vec<i32>,
     instruction_pointer: usize,
-    state: State,
 }
 
 impl Computer {
@@ -17,7 +15,6 @@ impl Computer {
         Self {
             memory: program.to_vec(),
             instruction_pointer: 0,
-            state: State::EXEC,
         }
     }
 
@@ -29,25 +26,25 @@ impl Computer {
 
     pub fn execute_program(&mut self) -> &Self {
         loop {
-            match self.state {
-                State::EXEC => {
-                    self.execute_instruction();
-                },
-                State::HALT => {
+            let signal = self.execute_instruction();
+
+            match &signal {
+                Some(Signal::HALT) => {
                     break;
-                }
+                },
+                None => (),
             }
         }
 
         self
     }
 
-    fn execute_instruction(&mut self) {
+    fn execute_instruction(&mut self) -> Option<Signal> {
         let instr_ptr = self.instruction_pointer;
 
         let opcode = self.memory[instr_ptr];
 
-        match opcode {
+        let result = match opcode {
             1 => {
                 let param_addr = (
                     self.memory[instr_ptr+1] as usize,
@@ -65,6 +62,7 @@ impl Computer {
                 self.memory[result_addr] = result;
 
                 self.instruction_pointer += 4;
+                None
             },
             2 => {
                 let param_addr = (
@@ -83,12 +81,15 @@ impl Computer {
                 self.memory[result_addr] = result;
 
                 self.instruction_pointer += 4;
+                None
             },
             99 => {
-                self.state = State::HALT;
                 self.instruction_pointer += 1;
+                Some(Signal::HALT)
             },
             _ => panic!("unrecognized opcode: {}", opcode),
-        }
+        };
+
+        result
     }
 }
