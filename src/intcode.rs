@@ -1,13 +1,17 @@
+use std::io::{self, Write};
 
 #[derive(Clone)]
 enum Signal {
     HALT,
 }
 
+#[derive(Debug)]
 enum OpCode {
-    ADD,
-    MUL,
-    HALT,
+    ADD, // 1
+    MUL, // 2
+    INPUT, // 3
+    OUTPUT, // 4
+    HALT, // 99
 }
 
 impl From<i32> for OpCode {
@@ -15,6 +19,8 @@ impl From<i32> for OpCode {
         match id {
             1 => Self::ADD,
             2 => Self::MUL,
+            3 => Self::INPUT,
+            4 => Self::OUTPUT,
             99 => Self::HALT,
             _ => panic!("unrecognized opcode id: {}", id),
         }
@@ -26,6 +32,8 @@ impl OpCode {
         match self {
             Self::ADD => 4,
             Self::MUL => 4,
+            Self::INPUT => 2,
+            Self::OUTPUT => 2,
             Self::HALT => 1,
         }
     }
@@ -80,6 +88,7 @@ impl From<&Computer> for Instruction {
 pub struct Computer {
     pub memory: Vec<i32>,
     instruction_pointer: usize,
+    pub output: i32,
 }
 
 impl Computer {
@@ -87,6 +96,7 @@ impl Computer {
         Self {
             memory: program.to_vec(),
             instruction_pointer: 0,
+            output: 0,
         }
     }
 
@@ -151,6 +161,25 @@ impl Computer {
                 self.memory[paddr3] = self.memory[paddr1] * self.memory[paddr2];
                 None
             },
+            OpCode::INPUT => {
+                print!("Enter a System ID: ");
+                std::io::stdout().flush().unwrap();
+
+                let mut input = String::new();
+                io::stdin().read_line(&mut input).unwrap();
+                let input = input.strip_suffix("\n").unwrap();
+                let value = input.parse::<i32>().unwrap();
+
+                let paddr1 = self.resolve_paramter_address(1, pmode1);
+                self.memory[paddr1] = value;
+
+                None
+            },
+            OpCode::OUTPUT => {
+                let paddr1 = self.resolve_paramter_address(1, pmode1);
+                self.output = self.memory[paddr1];
+                None
+            }
             OpCode::HALT => {
                 Some(Signal::HALT)
             },
