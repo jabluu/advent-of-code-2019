@@ -47,7 +47,6 @@ impl From<i32> for ParameterMode {
 }
 
 struct Instruction {
-    address: usize,
     opcode: OpCode,
     pmode1: ParameterMode,
     pmode2: ParameterMode,
@@ -64,21 +63,19 @@ impl From<&Computer> for Instruction {
             (x % d, x / d)
         }
 
-        let (opcode, remainder) = f(remainder, 2);
-        let (pmode1, remainder) = f(remainder, 1);
-        let (pmode2, remainder) = f(remainder, 1);
-        let (pmode3, remainder) = f(remainder, 1);
+        let (opcode_id, remainder) = f(remainder, 2);
+        let (pmode1_id, remainder) = f(remainder, 1);
+        let (pmode2_id, remainder) = f(remainder, 1);
+        let (pmode3_id, remainder) = f(remainder, 1);
 
         Self {
-            address,
-            opcode: opcode.into(),
-            pmode1: pmode1.into(),
-            pmode2: pmode2.into(),
-            pmode3: pmode3.into(),
+            opcode: opcode_id.into(),
+            pmode1: pmode1_id.into(),
+            pmode2: pmode2_id.into(),
+            pmode3: pmode3_id.into(),
         }
     }
 }
-
 #[derive(Clone)]
 pub struct Computer {
     pub memory: Vec<i32>,
@@ -114,50 +111,44 @@ impl Computer {
         self
     }
 
+    fn fetch_instruction(&self) -> Instruction {
+        self.into()
+    }
+
+    fn resolve_paramter_address(
+        &self,
+        offset: usize,
+        pmode: ParameterMode
+    ) -> usize {
+        let address = self.instruction_pointer;
+
+        match pmode {
+            ParameterMode::POSITION => self.memory[address + offset] as usize,
+            ParameterMode::IMMEDIATE => address + offset,
+        }
+    }
+
     fn execute_instruction(&mut self) -> Option<Signal> {
         let Instruction {
-            address,
             opcode,
             pmode1,
             pmode2,
             pmode3
-        } = Instruction::from(&*self);
+        } = self.fetch_instruction();
 
         let result = match opcode {
             OpCode::ADD => {
-                let param_addr = (
-                    self.memory[address+1] as usize,
-                    self.memory[address+2] as usize,
-                );
-
-                let result_addr = self.memory[address+3] as usize;
-
-                let param = (
-                    self.memory[param_addr.0],
-                    self.memory[param_addr.1],
-                );
-
-                let result = param.0 + param.1;
-                self.memory[result_addr] = result;
-
+                let paddr1 = self.resolve_paramter_address(1, pmode1);
+                let paddr2 = self.resolve_paramter_address(2, pmode2);
+                let paddr3 = self.resolve_paramter_address(3, pmode3);
+                self.memory[paddr3] = self.memory[paddr1] + self.memory[paddr2];
                 None
             },
             OpCode::MUL => {
-                let param_addr = (
-                    self.memory[address+1] as usize,
-                    self.memory[address+2] as usize,
-                );
-
-                let result_addr = self.memory[address+3] as usize;
-
-                let param = (
-                    self.memory[param_addr.0],
-                    self.memory[param_addr.1],
-                );
-
-                let result = param.0 * param.1;
-                self.memory[result_addr] = result;
-
+                let paddr1 = self.resolve_paramter_address(1, pmode1);
+                let paddr2 = self.resolve_paramter_address(2, pmode2);
+                let paddr3 = self.resolve_paramter_address(3, pmode3);
+                self.memory[paddr3] = self.memory[paddr1] * self.memory[paddr2];
                 None
             },
             OpCode::HALT => {
