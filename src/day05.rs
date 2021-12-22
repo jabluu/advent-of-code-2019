@@ -5,7 +5,7 @@ use std::io::{BufRead, BufReader};
 
 use crate::intcode::Computer;
 
-pub fn part1() -> i32 {
+fn load() -> Computer {
     let handle = File::open("input/day05/input.txt").unwrap();
     let buffer = BufReader::new(handle);
 
@@ -20,13 +20,17 @@ pub fn part1() -> i32 {
         })
         .collect::<Vec<Computer>>();
 
-    let mut computer = computers[0].clone();
+    computers[0].clone()
+}
 
+pub fn part1() -> i32 {
+    let mut computer = load();
     computer.execute_program();
-
     computer.output
 }
 
 pub fn part2() -> i32 {
-    0
+    let mut computer = load();
+    computer.execute_program();
+    computer.output
 }

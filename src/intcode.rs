@@ -1,4 +1,4 @@
-use std::io::{self, Write};
+use std::{io::{self, Write}, result};
 
 #[derive(Clone)]
 enum Signal {
@@ -11,6 +11,10 @@ enum OpCode {
     MUL, // 2
     INPUT, // 3
     OUTPUT, // 4
+    JIT, // 5
+    JIF, // 6
+    LT, // 7
+    EQ, // 8
     HALT, // 99
 }
 
@@ -21,6 +25,10 @@ impl From<i32> for OpCode {
             2 => Self::MUL,
             3 => Self::INPUT,
             4 => Self::OUTPUT,
+            5 => Self::JIT,
+            6 => Self::JIF,
+            7 => Self::LT,
+            8 => Self::EQ,
             99 => Self::HALT,
             _ => panic!("unrecognized opcode id: {}", id),
         }
@@ -34,6 +42,10 @@ impl OpCode {
             Self::MUL => 4,
             Self::INPUT => 2,
             Self::OUTPUT => 2,
+            Self::JIT => 3,
+            Self::JIF => 3,
+            Self::LT => 4,
+            Self::EQ => 4,
             Self::HALT => 1,
         }
     }
@@ -84,6 +96,7 @@ impl From<&Computer> for Instruction {
         }
     }
 }
+
 #[derive(Clone)]
 pub struct Computer {
     pub memory: Vec<i32>,
@@ -125,7 +138,7 @@ impl Computer {
         self.into()
     }
 
-    fn resolve_paramter_address(
+    fn resolve_parameter_address(
         &self,
         offset: usize,
         pmode: ParameterMode
@@ -139,6 +152,8 @@ impl Computer {
     }
 
     fn execute_instruction(&mut self) -> Option<Signal> {
+        let ip = self.instruction_pointer;
+
         let Instruction {
             opcode,
             pmode1,
@@ -146,20 +161,20 @@ impl Computer {
             pmode3
         } = self.fetch_instruction();
 
-        let result = match opcode {
+        let (ip, signal) = match opcode {
             OpCode::ADD => {
-                let paddr1 = self.resolve_paramter_address(1, pmode1);
-                let paddr2 = self.resolve_paramter_address(2, pmode2);
-                let paddr3 = self.resolve_paramter_address(3, pmode3);
+                let paddr1 = self.resolve_parameter_address(1, pmode1);
+                let paddr2 = self.resolve_parameter_address(2, pmode2);
+                let paddr3 = self.resolve_parameter_address(3, pmode3);
                 self.memory[paddr3] = self.memory[paddr1] + self.memory[paddr2];
-                None
+                (ip + opcode.size(), None)
             },
             OpCode::MUL => {
-                let paddr1 = self.resolve_paramter_address(1, pmode1);
-                let paddr2 = self.resolve_paramter_address(2, pmode2);
-                let paddr3 = self.resolve_paramter_address(3, pmode3);
+                let paddr1 = self.resolve_parameter_address(1, pmode1);
+                let paddr2 = self.resolve_parameter_address(2, pmode2);
+                let paddr3 = self.resolve_parameter_address(3, pmode3);
                 self.memory[paddr3] = self.memory[paddr1] * self.memory[paddr2];
-                None
+                (ip + opcode.size(), None)
             },
             OpCode::INPUT => {
                 print!("Enter a System ID: ");
@@ -170,23 +185,73 @@ impl Computer {
                 let input = input.strip_suffix("\n").unwrap();
                 let value = input.parse::<i32>().unwrap();
 
-                let paddr1 = self.resolve_paramter_address(1, pmode1);
+                let paddr1 = self.resolve_parameter_address(1, pmode1);
                 self.memory[paddr1] = value;
 
-                None
+                (ip + opcode.size(), None)
             },
             OpCode::OUTPUT => {
-                let paddr1 = self.resolve_paramter_address(1, pmode1);
+                let paddr1 = self.resolve_parameter_address(1, pmode1);
                 self.output = self.memory[paddr1];
-                None
-            }
+                (ip + opcode.size(), None)
+            },
+            OpCode::JIT => {
+                let paddr1 = self.resolve_parameter_address(1, pmode1);
+                let paddr2 = self.resolve_parameter_address(2, pmode2);
+
+                let ip = match self.memory[paddr1] {
+                    0 => ip + opcode.size(),
+                    _ => self.memory[paddr2] as usize,
+                };
+
+                (ip, None)
+            },
+            OpCode::JIF => {
+                let paddr1 = self.resolve_parameter_address(1, pmode1);
+                let paddr2 = self.resolve_parameter_address(2, pmode2);
+
+                let ip = match self.memory[paddr1] {
+                    0 => self.memory[paddr2] as usize,
+                    _ => ip + opcode.size(),
+                };
+
+                (ip, None)
+            },
+            OpCode::LT => {
+                let paddr1 = self.resolve_parameter_address(1, pmode1);
+                let paddr2 = self.resolve_parameter_address(2, pmode2);
+                let paddr3 = self.resolve_parameter_address(3, pmode3);
+
+                let result = self.memory[paddr1] < self.memory[paddr2];
+
+                self.memory[paddr3] = match result {
+                    true => 1,
+                    false => 0,
+                };
+
+                (ip + opcode.size(), None)
+            },
+            OpCode::EQ => {
+                let paddr1 = self.resolve_parameter_address(1, pmode1);
+                let paddr2 = self.resolve_parameter_address(2, pmode2);
+                let paddr3 = self.resolve_parameter_address(3, pmode3);
+
+                let result = self.memory[paddr1] == self.memory[paddr2];
+
+                self.memory[paddr3] = match result {
+                    true => 1,
+                    false => 0,
+                };
+
+                (ip + opcode.size(), None)
+            },
             OpCode::HALT => {
-                Some(Signal::HALT)
+                (ip + opcode.size(), Some(Signal::HALT))
             },
         };
 
-        self.instruction_pointer += opcode.size();
+        self.instruction_pointer = ip;
 
-        result
+        signal
     }
 }

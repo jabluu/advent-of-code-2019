@@ -45,5 +45,5 @@ fn main() {
 
     let result = day05::part2();
     println!("      Part 2: {:?}", result);
-    // assert_eq!(617, result);
+    assert_eq!(652726, result);
 }
