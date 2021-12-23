@@ -89,5 +89,35 @@ pub fn part1() -> i32 {
 }
 
 pub fn part2() -> i32 {
-    0
+    let (node_buffer, node_mapping) = load();
+
+    let node_you = &node_buffer[node_mapping["YOU"]];
+    let node_san = &node_buffer[node_mapping["SAN"]];
+
+    let mut path_you = vec![node_you];
+    let mut path_san = vec![node_san];
+
+    while let Some(index) = path_you.last().unwrap().parent {
+        path_you.push(&node_buffer[index]);
+    }
+
+    while let Some(index) = path_san.last().unwrap().parent {
+        path_san.push(&node_buffer[index]);
+    }
+
+    let mut iter_you = path_you.iter().rev();
+    let mut iter_san = path_san.iter().rev();
+
+    loop {
+        let node_you = iter_you.next().unwrap();
+        let node_san = iter_san.next().unwrap();
+
+        if node_you.data != node_san.data {
+            break;
+        }
+    }
+
+    let num_transfers = iter_you.count() + iter_san.count();
+
+    num_transfers as i32
 }
