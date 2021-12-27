@@ -1,4 +1,4 @@
-use std::{io::{self, Write}, result};
+use std::collections::VecDeque;
 
 #[derive(Clone)]
 enum Signal {
@@ -101,7 +101,8 @@ impl From<&Computer> for Instruction {
 pub struct Computer {
     pub memory: Vec<i32>,
     instruction_pointer: usize,
-    pub output: i32,
+    pub input_buffer: VecDeque<i32>,
+    pub output_buffer: VecDeque<i32>,
 }
 
 impl Computer {
@@ -109,7 +110,8 @@ impl Computer {
         Self {
             memory: program.to_vec(),
             instruction_pointer: 0,
-            output: 0,
+            input_buffer: VecDeque::new(),
+            output_buffer: VecDeque::new(),
         }
     }
 
@@ -177,22 +179,13 @@ impl Computer {
                 (ip + opcode.size(), None)
             },
             OpCode::INPUT => {
-                print!("Enter a System ID: ");
-                std::io::stdout().flush().unwrap();
-
-                let mut input = String::new();
-                io::stdin().read_line(&mut input).unwrap();
-                let input = input.strip_suffix("\n").unwrap();
-                let value = input.parse::<i32>().unwrap();
-
                 let paddr1 = self.resolve_parameter_address(1, pmode1);
-                self.memory[paddr1] = value;
-
+                self.memory[paddr1] = self.input_buffer.pop_front().unwrap();
                 (ip + opcode.size(), None)
             },
             OpCode::OUTPUT => {
                 let paddr1 = self.resolve_parameter_address(1, pmode1);
-                self.output = self.memory[paddr1];
+                self.output_buffer.push_back(self.memory[paddr1]);
                 (ip + opcode.size(), None)
             },
             OpCode::JIT => {

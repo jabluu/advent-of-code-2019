@@ -25,12 +25,14 @@ fn load() -> Computer {
 
 pub fn part1() -> i32 {
     let mut computer = load();
+    computer.input_buffer.push_back(1);
     computer.execute_program();
-    computer.output
+    computer.output_buffer.pop_back().unwrap()
 }
 
 pub fn part2() -> i32 {
     let mut computer = load();
+    computer.input_buffer.push_back(5);
     computer.execute_program();
-    computer.output
+    computer.output_buffer.pop_back().unwrap()
 }
